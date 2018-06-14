@@ -1,0 +1,541 @@
+#python playlist.py 12182226203
+#print (json.dumps(VARIABLE, sort_keys=True, indent = 4))
+
+#FAZER PROCEDIMENTO NO DESKTOP
+
+
+#https://beta.developer.spotify.com/dashboard/login - site para conseguir CLIENT_ID, CLIENT_SECRET E REDIRECT_URI
+
+#export SPOTIPY_CLIENT_ID='your-spotify-client-id'
+#export SPOTIPY_CLIENT_SECRET='your-spotify-client-secret'
+#export SPOTIPY_REDIRECT_URI='your-app-redirect-url'
+
+
+import os
+import sys
+import spotipy
+import spotipy.util as util
+import json
+import webbrowser
+from json.decoder import JSONDecodeError
+
+
+
+# Get username from terminal
+
+if len(sys.argv) > 1:
+    username = sys.argv[1]
+else:
+    sys.exit()
+
+
+scope = 'user-read-private playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-modify-playback-state user-library-read user-read-playback-state user-read-currently-playing streaming'
+
+# User ID:  12182226203
+
+# Erase cache and prompt for user permission
+
+try:
+    token = util.prompt_for_user_token(username, scope)
+
+
+except (AttributeError, JSONDecodeError):
+    os.remove(f".cache-{username}")
+    token = util.prompt_for_user_token(username, scope)
+
+# Determinando o objeto
+spotifyObject = spotipy.Spotify(auth=token)
+
+
+#Determinando o aparelho
+devices = spotifyObject.devices()
+#print (json.dumps(devices, sort_keys=True, indent = 4))
+deviceID = devices['devices'][0]['id']
+
+
+
+usuario = spotifyObject.current_user()
+#print (json.dumps(usuario, sort_keys=True, indent = 4))
+
+nome_usuario = usuario['display_name']
+país = usuario['country']
+usuario_id = usuario['id']
+
+#print (json.dumps(novos, sort_keys=True, indent = 4))
+
+loopI = True
+while loopI:
+    print()
+    print()
+    print('>>>>>>>>> Bem vindo!!!')
+    print()
+    print()
+    pergunta = input ("Digite '1' para começar o programa ou 'x'para sair: ".upper())
+    if pergunta == '1':
+        print()
+        print()
+        print()
+        print("Digite 'p' para criar uma playlist\n\nDigite 'pe' para ver as playlists já existentes\n\nDigite 's' para ver as músicas salvas\n\nDigite 'a' para um artista específico".upper())
+        print()
+        print()
+        pergunta2 = input ('Sua escolha:  '.upper())
+        trackURI = []
+
+
+
+
+        if pergunta2=='pe':
+            playlistOB = spotifyObject.user_playlists(usuario_id, 50)
+            playlist = playlistOB['items']
+            #print (json.dumps(playlistOB, sort_keys=True, indent = 4))
+            c=0
+            usuario_playlist = playlist[0]['owner']['display_name']
+            playlist_id = playlist[0]['id']
+            p_id = []
+            loop = True
+            while loop:
+                print()
+                print()
+                print()
+                for i in playlist:                            
+                    usuario = i['owner']['display_name']                    
+                    if usuario==nome_usuario:
+                        print()
+                        print('{0}.{1}'.format(c, i['name']))
+                        playlist_id = i['id']
+                        p_id.append(playlist_id)
+                        #playlist_track = i['tracks']['href']
+                        c+=1
+                        #print (json.dumps(playlist_track, sort_keys=True, indent = 4))
+                print()
+                print()
+            
+                pergunta_playlist = input('Digite o número da playlist para ver seu conteúdo: '.upper())
+                lista_playlist = []
+                lista_playlist.append(p_id[int(pergunta_playlist)])
+                c=0
+                for i in lista_playlist:
+                    playlist_tracks = spotifyObject.user_playlist_tracks(usuario_id,i)                
+                    #print (json.dumps(playlist_tracks, sort_keys=True, indent = 4))
+                    geral= playlist_tracks['items']
+                    print()
+                    print()
+                    print()
+                    uri_musicas = []
+                    for i in geral:
+                        nome_musica = i['track']['name']
+                        musica_id = i['track']['id']
+                        artista = i['track']['album']['artists'][0]['name']                
+                        uri= i['track']['uri']
+                        uri_musicas.append(uri)
+                        print("{0}. {1} - {2}".format(c,nome_musica, artista ))
+                        c+=1
+                    print()
+                    print()
+                    print()
+                    print()
+                    pergunta = input('Digite o número da música para ouvi-lá: '.upper())
+                    lista = []
+                    lista.append(uri_musicas[int(pergunta)])                    
+                    spotifyObject.start_playback(deviceID, None, lista)
+                    while True:
+                        pergunta = input("\nSe quiser escolher outra música para tocar, digite 'n'\nSe quiser escolher outra playlist, digite 'p'\nSe quiser voltar ao menu de entrada, digite 'm'\n\n\n\n\nSua escolha: ".upper())                
+                        if pergunta=='n':
+                            pergunta = input("Digite o número da nova música: ".upper())
+                            lista = []
+                            lista.append(uri_musicas[int(pergunta)])
+                            spotifyObject.start_playback(deviceID, None, lista)                
+                            #webbrowser.open_new(imagem_arte[int(pergunta)])                        
+                            print()
+                            print()
+                            loop=True
+                        if pergunta=='p':
+                            c=0
+                            loop = True
+                            break
+                        if pergunta=='m':
+                            loop = False
+                            break
+                
+                    
+                
+        
+        if pergunta2== 'p':
+            print()
+            print()
+            print()
+            nome_p = input('Crie um nome para sua playlist: '.upper())
+            nova_p = spotifyObject.user_playlist_create(usuario_id,nome_p)
+            #print (json.dumps(nova_p, sort_keys=True, indent = 4))            
+            p_id = nova_p['id']
+            print()
+            print()
+            print()
+            fala = input('A playlist está vazia\n\nVamos adicionar músicas nela\n\n\n\n\nDigite o nome da música: '.upper())
+            busca = spotifyObject.search(fala,5,0,'track')
+            #print (json.dumps(busca, sort_keys=True, indent = 4))
+            geral = busca['tracks']['items']
+            lista_uri = []
+            c=0
+            print()
+            print()
+            print()
+            for i in geral:                                
+                track_uri = i['uri']                           
+                nome = i['name']
+                artista = i['artists'][0]['name']                                            
+                print('{0}. {1} - {2}'.format(c, nome, artista))            
+                lista_uri.append(track_uri)
+                c+=1
+            print()
+            print()
+            print()
+            fala1 = input('Foram dadas algumas opções de busca\n\n\nDigite o número da música a ser adicionada: '.upper())                        
+            lista1 = []
+            lista1.append(lista_uri[int(fala1)])
+            print()
+            print()
+            print()
+            loop = True
+            while loop:
+                for i in lista1:
+                    lista = []
+                    lista.append(i)
+                
+                    adicionar = spotifyObject.user_playlist_add_tracks(usuario_id, p_id, lista)
+                    #print (json.dumps(adicionar, sort_keys=True, indent = 4))
+                    loop1 = True
+                    while loop1:                
+                        pergunta = input("Se quiser adicionar outra música para tocar, digite 'n'\n\nPara ver a playlist, digite 'v'\n\nPara voltar para o menu de entrada, digite 'm'\n\n\n\n\nSua escolha: ".upper())                    
+                        if pergunta=='n':
+                            print()
+                            print()
+                            print()
+                            loop2 = True
+                            while loop2:
+                                pergunta = input('Digite o nome da música: '.upper())
+                                busca = spotifyObject.search(pergunta,5,0,'track')
+                                #print (json.dumps(busca, sort_keys=True, indent = 4))
+                                geral = busca['tracks']['items']
+                                lista_uri = []
+                                c=0
+                                print()
+                                print()
+                                print()
+                                for i in geral:                                
+                                    track_uri = i['uri']                           
+                                    nome = i['name']
+                                    artista = i['artists'][0]['name']                                            
+                                    print('{0}. {1} - {2}'.format(c, nome, artista))            
+                                    lista_uri.append(track_uri)
+                                    c+=1
+                                print()
+                                print()
+                                print()
+                                fala1 = input('Foram dadas algumas opções de busca\n\n\nDigite o número da música a ser adicionada: '.upper())                        
+                                lista1 = []
+                                lista1.append(lista_uri[int(fala1)])
+                                print()
+                                print()
+                                print()                                                  
+                                for i in lista1:
+                                    lista = []
+                                    lista.append(i)                                                                            
+                                    #p_id = i['id']
+                                    adicionar = spotifyObject.user_playlist_add_tracks(usuario_id, p_id, lista)
+                                loop2 = False
+                                break
+                          
+                        if pergunta=='v':
+                            playlistOB = spotifyObject.user_playlists(usuario_id, 50)
+                            playlist = playlistOB['items']
+                            #print (json.dumps(playlistOB, sort_keys=True, indent = 4))
+                            c=0
+                            usuario_playlist = playlist[0]['owner']['display_name']
+                            p_id = playlist[0]['id']
+                            pl_id = []
+                            loop = True
+                            while loop:
+                                print()
+                                print()
+                                print()
+                                for i in playlist:                                                                                
+                                    nome = i['name'] 
+                                    if nome==nome_p:
+                                        print()
+                                        print('{0}.{1}'.format(c, i['name']))
+                                        playlist_id = i['id']
+                                        pl_id.append(playlist_id)
+                                        #playlist_track = i['tracks']['href']
+                                        c+=1
+                                        #print (json.dumps(playlist_track, sort_keys=True, indent = 4))
+                                print()
+                                print()
+                                print()
+                                pergunta_playlist = input("Digite '0' para ver as músicas da sua playlist criada: ".upper())
+                                lista_playlist = []
+                                lista_playlist.append(pl_id[int(pergunta_playlist)])
+                                c=0
+                                print()
+                                print()
+                                print()
+                                for i in lista_playlist:
+                                    playlist_tracks = spotifyObject.user_playlist_tracks(usuario_id,i)                
+                                    #print (json.dumps(playlist_tracks, sort_keys=True, indent = 4))
+                                    geral= playlist_tracks['items']
+                                    print()
+                                    print()
+                                    print()
+                                    uri_musicas = []
+                                    for i in geral:
+                                        nome_musica = i['track']['name']
+                                        musica_id = i['track']['id']
+                                        artista = i['track']['album']['artists'][0]['name']                
+                                        uri= i['track']['uri']
+                                        uri_musicas.append(uri)
+                                        print("{0}. {1} - {2}".format(c,nome_musica, artista ))
+                                        c+=1
+                                    print()
+                                    print()
+                                    print()
+                                    print()
+                                    pergunta = input('Digite o número da música para ouvi-lá: '.upper())
+                                    lista = []
+                                    lista.append(uri_musicas[int(pergunta)])                    
+                                    spotifyObject.start_playback(deviceID, None, lista)
+                                    print()
+                                    print()
+                                    print()
+                                    while True:
+                                        pergunta2 = input("\nSe quiser escolher outra música para ouvir, digite 'n'\n\nSe quiser voltar ao menu, digite 'm'\n\n\n\n\nSua escolha: ".upper())                
+                                        if pergunta2=='n':
+                                            pergunta = input("Digite o número da nova música: ".upper())
+                                            lista = []
+                                            lista.append(uri_musicas[int(pergunta)])
+                                            spotifyObject.start_playback(deviceID, None, lista)                
+                                            #webbrowser.open_new(imagem_arte[int(pergunta)])                        
+                                            print()
+                                            print()
+                                            loop=True                                       
+                                        if pergunta2=='m':
+                                            loop = False
+                                            break
+                                    print()
+                                    print()
+                                    print()
+                        if pergunta=='m':                            
+                            break
+                                
+        if pergunta2=='s':
+            print()
+            print()
+            while True:
+                musicas_salvas = spotifyObject.current_user_saved_tracks(20, 0)
+                #print (json.dumps(musicas_salvas, sort_keys=True, indent = 4))
+                musicas = musicas_salvas['items']
+                c=0
+                a=0
+                trackURI = []
+                imagem_arte = []
+                for i in musicas:
+
+                    nome = i['track']['name']
+                    track_id = i['track']['id']
+                    imagem_musica = i['track']['album']['images'][0]['url']
+                    artista = i['track']['artists'][0]['name']
+                    print('{0}:{1} - {2}'.format(c, nome,artista))
+                    trackURI.append (i['track']['uri'])
+                    imagem_arte.append(imagem_musica)
+                    c+=1
+                print()
+                print()
+                print()
+                print()
+                pergunta_musica = input ('Digite o número da música para ouvi-lá: '.upper())
+                lista = []
+                lista.append(trackURI[int(pergunta_musica)])                
+                spotifyObject.start_playback(deviceID, None, lista)                                
+                
+                #spotifyObject.next_track(devicID)   
+                
+                #webbrowser.open_new(imagem_arte[int(pergunta_musica)])
+                while True:
+                    pergunta = input("\nSe quiser escolher outra música para ouvir, digite 'n'\nSe quiser voltar ao menu de entrada, digite 'm'\n\n\n\n\nSua escolha: ".upper())                
+                    if pergunta=='n':
+                        pergunta = input("Digite o número da nova música: ".upper())
+                        lista = []
+                        lista.append(trackURI[int(pergunta)])                        
+                        spotifyObject.start_playback(deviceID, None, lista)
+                        #webbrowser.open_new(imagem_arte[int(pergunta)])                        
+                        print()
+                        print()
+                    else:
+                        break
+                break
+                    
+             
+                
+                       
+        if pergunta2=='a':
+            print()
+            print()
+            pergunta_nome = input ('Digite o nome do artista: '.upper())
+            busca2 = spotifyObject.search(pergunta_nome,1,0,'artist')
+            artista = busca2['artists']['items'][0]
+            artista_imagem = artista['images'][0]['url']
+            #webbrowser.open(artista_imagem)
+            print()
+            print()
+            loop2 = True
+            while loop2:
+                print()
+                print()
+                loop3 = True    
+                while loop3:
+                    pergunta_opcao = input("\nDigite 'a' para ver os albuns do artista\nDigite '10' para ver as TOP 10 do artista\nDigite 'm' para voltar para o menu de entrada\n\n\n\n\nSua escolha: ".upper())           
+                    if pergunta_opcao=='10':
+                        busca2 = spotifyObject.search(pergunta_nome,1,0,'artist')
+                        artista = busca2['artists']['items'][0]
+                        a_id = artista['id']
+                        nome_a = artista['name']
+                        #artista_imagem = artista['images'][0]['url']
+                        artista_top10 = spotifyObject.artist_top_tracks(a_id, 'BR')
+                        #print (json.dumps(artista, sort_keys=True, indent = 4))
+                        geral = artista_top10['tracks']
+                        c=1
+                        a = 0
+                        trackURI= []
+                        print()
+                        print()
+                        for i in geral:                            
+                            musica = i['name']
+                            trackURI.append(i['uri'])
+                            print("{0}. {1}".format(a, musica))
+                            c+=1
+                            a+=1
+
+                        print()
+                        print()
+                        pergunta_musica = input ("\nDigite o número da música para ouvi-lá\nDigite 'm' para voltar para o menu de entrada\n\n\n\n\nSua escolha: ".upper())
+                                           
+                        if pergunta_musica=='m':
+                            loop2= True
+                            loop3 = False
+                            break
+                        
+                        else:
+                            lista = []
+                            lista.append(trackURI[int(pergunta_musica)])
+                            spotifyObject.start_playback(deviceID, None, lista)                            
+                            print()
+                            print()
+                            print()
+                            loopB=True
+                            while loopB:
+                                pergunta = input("Digite 'n' para escolher outra música para ouvir\nDigite 'x' para sair\n\n\n\n\nSua escolha: ".upper())
+                                if pergunta=='x':
+                                    break
+                                else:
+                                
+                                    print()
+                                    print()
+                                    print()
+                                    pergunta_musica = input ('Digite o número da música: '.upper())
+                                    lista = []
+                                    lista.append(trackURI[int(pergunta_musica)])
+                                    spotifyObject.start_playback(deviceID, None, lista)
+                                    print()
+                                    print()
+                                    while True:
+                                        pergunta = input("\nSe quiser escolher outra música para ouvir, digite 'n'\nSe quiser voltar ao menu de entrada, digite 'm'\n\n\n\n\nSua escolha: ".upper())                
+                                        if pergunta=='n':
+                                            
+                                            pergunta = input("Digite o número da nova música: ".upper())
+                                            lista = []
+                                            lista.append(trackURI[int(pergunta)])
+                                            spotifyObject.start_playback(deviceID, None, lista)                
+                                                
+                                            print()
+                                            print()
+                                        else:
+                                            break
+                                    break
+                                break
+                            break    
+                    if pergunta_opcao=='a':
+                        busca2 = spotifyObject.search(pergunta_nome,1,0,'artist')
+                        artista = busca2['artists']['items'][0]
+                        a_id = artista['id']
+                        nome_a = artista['name']
+                        albumBO = spotifyObject.artist_albums(a_id)
+                        #print (json.dumps(albumBO, sort_keys=True, indent = 4))
+                        album = albumBO['items']
+                        c=0
+                        a = 0
+                        arte_album = []
+                        uri_album = []
+                        uri_musica_a = []
+
+                        for i in album:
+                            nome = i['name']
+                            tipo = i['album_type']
+                            album_imagem = i['images'][0]['url']
+                            album_id = i['id']
+                            album_uri = i['uri']
+                            uri_album.append(album_uri)
+                            nome_artista =i['artists'][0]['name']
+                            if tipo=='album' and nome_artista==nome_a:
+                                print()
+                                print()
+                                print('ALBUM: {0}'.format(nome))
+                                print()
+
+                                musicas_album = spotifyObject.album_tracks(album_id)
+                                #print (json.dumps(musicas_album, sort_keys=True, indent = 4))
+                                musicas = musicas_album['items']
+                                for i in musicas:
+                                    nome = i['name']
+
+                                    print ('{0}. {1}'.format(a, nome))
+                                    uri_musica_a.append(i['uri'])
+                                    arte_album.append(album_imagem)
+                                    a+=1
+                                print()
+
+                        pergunta1 = input("\n\n\n\n\nDigite 'm' para escolher a música para tocar\nDigite 'x' para voltar para o menu de entrada\n\n\n\n\nSua escolha: ".upper())
+                        if pergunta1=='m':
+                            loopAA = True
+                            while loopAA:
+                                pergunta = input ('Digite o número da música: '.upper())
+                                lista = []
+                                lista.append(uri_musica_a[int(pergunta)])
+                                spotifyObject.start_playback(deviceID, None, lista)                        
+                                print()
+                                print()
+                                loopA = True
+                                while loopA:
+                                    pergunta = input("\nSe quiser escolher outra música para ouvir, digite 'n'\nSe quiser voltar ao menu, digite 'm'\n\n\n\n\nSua escolha: ".upper())                
+                                    if pergunta=='n':
+                                        print()                                   
+                                        pergunta = input("Digite o número da nova música: ".upper())
+                                        lista = []
+                                        lista.append(uri_musica_a[int(pergunta)])
+                                        spotifyObject.start_playback(deviceID, None, lista)                
+                                        print()
+                                        print()
+                                    else:
+                                        loop3= True
+                                        loopAA = False
+                                        
+                    if pergunta=='m':                        
+                        loop = False
+                        break
+                    break
+                break     
+                    
+            
+    elif pergunta == 'x':
+        print()
+        print()
+        print()
+        break
